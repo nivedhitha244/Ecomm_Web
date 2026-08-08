@@ -1,0 +1,12 @@
+order_id,product,status,ordered_date,expected_delivery,current_location
+ORD1023,JBL Headphones,🚚 Out for Delivery,Aug 5,Aug 8,Chennai Delivery Hub
+ORD1024,Nike Running Shoes,📦 Processing,Aug 7,Aug 12,Mumbai Warehouse
+ORD1025,Mechanical Keyboard,✅ Delivered,Jul 28,Aug 2,Bangalore Hub
+ORD1026,Samsung Galaxy S24,✅ Delivered,Jul 30,Aug 3,Hyderabad Hub
+ORD1027,Puma T-Shirt,📦 Processing,Aug 8,Aug 14,Delhi Logistics Center
+ORD1028,Dyson Vacuum Cleaner,🚚 Out for Delivery,Aug 6,Aug 8,Chennai Delivery Hub
+ORD1029,Atomic Habits Book,❌ Cancelled,Aug 1,Aug 5,N/A
+ORD1030,Logitech Wireless Mouse,🔄 Return Requested,Jul 20,Jul 24,Pune Return Center
+ORD1031,Ergonomic Office Chair,🚛 In Transit,Aug 4,Aug 10,Kolkata Sort Facility
+ORD1032,L'Oreal Skincare Kit,📦 Processing,Aug 7,Aug 11,Mumbai Warehouse
+ORD1033,MacBook Air M2,🚛 In Transit,Aug 5,Aug 9,Chennai Sorting Center
