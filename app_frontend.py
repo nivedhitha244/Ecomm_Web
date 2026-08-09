@@ -1,6 +1,5 @@
 import base64
 import streamlit as st
-import pandas as pd
 from langchain_core.messages import HumanMessage, AIMessage
 import app_backend as backend
 
@@ -227,6 +226,7 @@ if st.session_state.show_analytics:
     st.divider()
     
     st.subheader("Message Volume by Role")
+    import pandas as pd
     chart_data = pd.DataFrame(
         {"Messages": [stats["user_messages"], stats["bot_messages"]]},
         index=["User (Human)", "Assistant (AI)"]
@@ -238,6 +238,7 @@ if st.session_state.show_analytics:
     st.subheader("🚨 Recent Fraud Alerts")
     fraud_alerts = backend.get_recent_fraud_alerts()
     if fraud_alerts:
+        import pandas as pd
         fraud_df = pd.DataFrame(fraud_alerts)
         st.dataframe(fraud_df, use_container_width=True)
     else:

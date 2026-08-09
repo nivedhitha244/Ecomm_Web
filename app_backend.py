@@ -2,7 +2,6 @@ import os
 import logging
 import sqlite3
 import uuid
-import pandas as pd
 import re
 import json 
 from datetime import datetime
@@ -191,6 +190,9 @@ def get_rag_chain():
         from langchain_core.output_parsers import StrOutputParser
         print("Loading existing RAG database...")
 
+        import torch
+        torch.set_num_threads(1)
+        torch.set_grad_enabled(False)
         embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
             cache_folder="/app/hf_cache",
@@ -272,6 +274,7 @@ Context:
 # ==========================================
 def get_order_details(order_id):
     try:
+        import pandas as pd
         df = pd.read_csv("orders.csv")
         df['order_id'] = df['order_id'].astype(str)
         order_row = df[df['order_id'].str.upper() == order_id]
@@ -286,6 +289,7 @@ def get_order_details(order_id):
 
 def process_return(order_id):
     try:
+        import pandas as pd
         df = pd.read_csv("orders.csv")
         df['order_id'] = df['order_id'].astype(str)
         order_row = df[df['order_id'].str.upper() == order_id]
