@@ -4,7 +4,7 @@ import sqlite3
 import uuid
 import pandas as pd
 import re
-import json # NEW: Needed to convert lists to database strings
+import json 
 from datetime import datetime
 from dotenv import load_dotenv
 import streamlit as st
@@ -34,8 +34,9 @@ load_dotenv()
 def init_db():
     conn = sqlite3.connect('chat_history.db', check_same_thread=False)
     c = conn.cursor()
+    # UPDATED: Added username column to sessions table
     c.execute('''CREATE TABLE IF NOT EXISTS sessions 
-                 (id TEXT PRIMARY KEY, title TEXT, created_at DATETIME)''')
+                 (id TEXT PRIMARY KEY, username TEXT, title TEXT, created_at DATETIME)''')
     c.execute('''CREATE TABLE IF NOT EXISTS messages 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT, content TEXT, created_at DATETIME)''')
     
@@ -45,7 +46,6 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS fraud_flags 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, flag_reason TEXT, severity TEXT, created_at DATETIME)''')
                  
-    # NEW: Table to permanently store user carts
     c.execute('''CREATE TABLE IF NOT EXISTS user_carts 
                  (username TEXT PRIMARY KEY, cart_data TEXT)''')
                  
@@ -58,17 +58,14 @@ db_conn = init_db()
 # CART DATABASE LOGIC
 # ==========================================
 def save_user_cart(username, cart_list):
-    """Saves the current Python cart list into the SQLite database securely."""
     if username == "Guest" or not username:
         return
     c = db_conn.cursor()
     cart_json = json.dumps(cart_list)
-    # INSERT OR REPLACE updates the cart if the user exists, or creates it if they are new
     c.execute("INSERT OR REPLACE INTO user_carts (username, cart_data) VALUES (?, ?)", (username, cart_json))
     db_conn.commit()
 
 def load_user_cart(username):
-    """Loads the saved cart from the database when a user logs in."""
     c = db_conn.cursor()
     c.execute("SELECT cart_data FROM user_carts WHERE username = ?", (username,))
     result = c.fetchone()
@@ -143,20 +140,22 @@ def authenticate_user(username, password):
 # ==========================================
 # SESSION & MESSAGE MANAGEMENT
 # ==========================================
-def create_session(title="New Chat"):
+# UPDATED: Now requires username to bind the session to the user
+def create_session(username, title="New Chat"):
     session_id = str(uuid.uuid4())
     c = db_conn.cursor()
-    c.execute("INSERT INTO sessions (id, title, created_at) VALUES (?, ?, ?)", 
-              (session_id, title, datetime.now()))
+    c.execute("INSERT INTO sessions (id, username, title, created_at) VALUES (?, ?, ?, ?)", 
+              (session_id, username, title, datetime.now()))
     db_conn.commit()
     return session_id
 
-def get_all_sessions(search_query=""):
+# UPDATED: Now filters sessions by username
+def get_all_sessions(username, search_query=""):
     c = db_conn.cursor()
     if search_query:
-        c.execute("SELECT id, title FROM sessions WHERE title LIKE ? ORDER BY created_at DESC", (f"%{search_query}%",))
+        c.execute("SELECT id, title FROM sessions WHERE username = ? AND title LIKE ? ORDER BY created_at DESC", (username, f"%{search_query}%"))
     else:
-        c.execute("SELECT id, title FROM sessions ORDER BY created_at DESC")
+        c.execute("SELECT id, title FROM sessions WHERE username = ? ORDER BY created_at DESC", (username,))
     return [{"id": row[0], "title": row[1]} for row in c.fetchall()]
 
 def delete_session(session_id):
@@ -303,7 +302,7 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
                 
         if user_lower in ["clear cart", "empty cart"]:
             cart.clear()
-            save_user_cart(username, cart) # <-- NEW: Saves empty cart to DB
+            save_user_cart(username, cart) 
             st.session_state.pop("last_inquired_item", None)
             return "🗑️ **Your cart has been emptied.**"
 
@@ -311,7 +310,7 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
         if confirm_add_match and st.session_state.get("last_inquired_item"):
             item_to_add = st.session_state.pop("last_inquired_item")
             cart.append(item_to_add)
-            save_user_cart(username, cart) # <-- NEW: Saves updated cart to DB
+            save_user_cart(username, cart)
             return f"✅ **Added to Cart!**\n\n**{item_to_add}** is now in your cart. You have {len(cart)} item(s) total.\n\nType *'view cart'* to see them."
 
         buy_match = re.search(r'(?:i want to buy|i want to purchase|buy|purchase)\s+(.+)', user_lower, re.IGNORECASE)
@@ -342,7 +341,7 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
             if not item: item = "Product"
                 
             cart.append(item)
-            save_user_cart(username, cart) # <-- NEW: Saves updated cart to DB
+            save_user_cart(username, cart) 
             st.session_state.pop("last_inquired_item", None)
             return f"✅ **Added to Cart!**\n\n**{item}** is now in your cart. You have {len(cart)} item(s) total.\n\nType *'view cart'* to see them."
 
@@ -362,7 +361,7 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
             
             if found_index != -1:
                 removed_item = cart.pop(found_index)
-                save_user_cart(username, cart) # <-- NEW: Saves updated cart to DB
+                save_user_cart(username, cart) 
                 return f"🗑️ **Removed from Cart!**\n\n**{removed_item}** has been removed. You have {len(cart)} item(s) total. Type *'view cart'* to see them."
             else:
                 return f"⚠️ **Item not found.** I couldn't find '{raw_target.title()}' in your cart. Type *'view cart'* to see what's currently in there."

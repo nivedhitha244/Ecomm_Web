@@ -7,7 +7,7 @@ from app_backend import (
     get_rag_chain, generate_response, create_session, 
     get_all_sessions, delete_session, get_session_messages, save_message,
     get_analytics_data, create_user, authenticate_user, get_recent_fraud_alerts,
-    load_user_cart  # <-- NEW: Imported the load function
+    load_user_cart
 )
 
 st.set_page_config(page_title="E-Commerce Assistant", page_icon="🛍️", layout="wide")
@@ -39,7 +39,7 @@ if "cart" not in st.session_state:
 def logout():
     st.session_state.logged_in = False
     st.session_state.username = None
-    st.session_state.cart = [] # <-- Wipes frontend RAM state securely
+    st.session_state.cart = [] 
     st.session_state.current_session_id = None
 
 def set_active_session(session_id):
@@ -77,7 +77,6 @@ def render_auth_page():
                 if authenticate_user(login_user, login_pass):
                     st.session_state.logged_in = True
                     st.session_state.username = login_user
-                    # === NEW: Fetch persistent cart data from database upon login ===
                     st.session_state.cart = load_user_cart(login_user)
                     st.rerun()
                 else:
@@ -104,7 +103,7 @@ def render_auth_page():
                         st.error(message)
 
 # ==========================================
-# MAIN APP ROUTING (The Gatekeeper)
+# MAIN APP ROUTING
 # ==========================================
 if not st.session_state.logged_in:
     render_auth_page()
@@ -137,7 +136,8 @@ with st.sidebar:
             st.session_state.quick_action_prompt = "I need to return an order"
     st.divider()
     
-    sessions = get_all_sessions(search_query)
+    # UPDATED: Passes the active username to the backend to filter history
+    sessions = get_all_sessions(st.session_state.username, search_query)
     
     if not sessions:
         if search_query:
@@ -290,7 +290,8 @@ else:
         
         if not st.session_state.current_session_id:
             title_text = prompt[:25] + "..." if len(prompt) > 25 else prompt
-            st.session_state.current_session_id = create_session(title=title_text)
+            # UPDATED: Now passes the logged-in user when creating a new chat
+            st.session_state.current_session_id = create_session(username=st.session_state.username, title=title_text)
         
         session_id = st.session_state.current_session_id
         
