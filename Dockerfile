@@ -15,7 +15,7 @@ COPY .streamlit .streamlit
 
 # Build the RAG database during Docker image creation
 # Removed because we are pushing chroma_db and hf_cache directly to Git
-# RUN python build_rag.py && chmod -R 777 /app
+RUN chmod -R 777 /app
 
 EXPOSE 8501
 
