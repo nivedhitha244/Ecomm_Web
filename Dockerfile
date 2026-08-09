@@ -14,7 +14,7 @@ COPY build_rag.py .
 COPY .streamlit .streamlit
 
 # Build the RAG database during Docker image creation
-RUN python build_rag.py
+RUN python build_rag.py && chmod -R 777 /app
 
 EXPOSE 8501
 
