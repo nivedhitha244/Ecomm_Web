@@ -196,7 +196,7 @@ def get_rag_chain():
         embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
             cache_folder="/app/hf_cache",
-            model_kwargs={'local_files_only': True}
+            model_kwargs={'device': 'cpu'}
         )
 
         vector_store = Chroma(
