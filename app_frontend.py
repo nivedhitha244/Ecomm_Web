@@ -2,11 +2,18 @@ import base64
 import streamlit as st
 import pandas as pd
 from langchain_core.messages import HumanMessage, AIMessage
-
 from app_backend import (
-    get_rag_chain, generate_response, create_session, 
-    get_all_sessions, delete_session, get_session_messages, save_message,
-    get_analytics_data, create_user, authenticate_user, get_recent_fraud_alerts,
+    get_rag_chain,
+    generate_response,
+    create_session,
+    get_all_sessions,
+    delete_session,
+    get_session_messages,
+    save_message,
+    get_analytics_data,
+    create_user,
+    authenticate_user,
+    get_recent_fraud_alerts,
     load_user_cart
 )
 
