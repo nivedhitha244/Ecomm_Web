@@ -12,8 +12,10 @@ import hashlib
 from langchain_core.messages import HumanMessage, AIMessage
 
 # Setup Logging
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 logging.basicConfig(
-    filename='chatbot_activity.log',
+    filename=os.path.join(BASE_DIR, 'chatbot_activity.log'),
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
@@ -25,7 +27,7 @@ load_dotenv()
 # ==========================================
 @st.cache_resource
 def init_db():
-    conn = sqlite3.connect('chat_history.db', check_same_thread=False)
+    conn = sqlite3.connect(os.path.join(BASE_DIR, 'chat_history.db'), check_same_thread=False)
     c = conn.cursor()
     # UPDATED: Added username column to sessions table
     c.execute('''CREATE TABLE IF NOT EXISTS sessions 
@@ -181,7 +183,7 @@ def get_session_messages(session_id):
 def get_rag_chain():
     try:
         import os
-        os.environ["HF_HOME"] = "/app/hf_cache"
+        os.environ["HF_HOME"] = "/tmp/huggingface"
         os.environ["ANONYMIZED_TELEMETRY"] = "False"
         from langchain_community.vectorstores import Chroma
         from langchain_huggingface import HuggingFaceEmbeddings
@@ -195,19 +197,21 @@ def get_rag_chain():
         torch.set_grad_enabled(False)
         embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
-            cache_folder="/app/hf_cache",
             model_kwargs={'device': 'cpu'}
         )
 
         vector_store = Chroma(
-            persist_directory="chroma_db",
+            persist_directory=os.path.join(BASE_DIR, "chroma_db"),
             embedding_function=embeddings
         )
 
-        api_key = os.getenv("GROQ_API_KEY")
+        try:
+            api_key = st.secrets["GROQ_API_KEY"]
+        except Exception:
+            api_key = os.getenv("GROQ_API_KEY")
 
         if not api_key:
-            raise ValueError("GROQ_API_KEY is not configured.")
+            raise ValueError("GROQ_API_KEY is not configured. Please add it to Streamlit Secrets or .env")
 
         llm = ChatGroq(
             temperature=0.3,
@@ -275,7 +279,7 @@ Context:
 def get_order_details(order_id):
     try:
         import pandas as pd
-        df = pd.read_csv("orders.csv")
+        df = pd.read_csv(os.path.join(BASE_DIR, "orders.csv"))
         df['order_id'] = df['order_id'].astype(str)
         order_row = df[df['order_id'].str.upper() == order_id]
         
@@ -290,7 +294,7 @@ def get_order_details(order_id):
 def process_return(order_id):
     try:
         import pandas as pd
-        df = pd.read_csv("orders.csv")
+        df = pd.read_csv(os.path.join(BASE_DIR, "orders.csv"))
         df['order_id'] = df['order_id'].astype(str)
         order_row = df[df['order_id'].str.upper() == order_id]
         
@@ -370,7 +374,11 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
                     ("system", "You are a smart E-commerce Assistant. The user's current cart contains: {cart_items}. The user just said they want to buy: '{item_inquiry}'. Acknowledge what is currently in their cart, point out any potential brand/compatibility mismatch if they are asking for a different brand (like asking for a Samsung product when they have a Redmi product in the cart), and ask if they would like you to add it anyway. Do not add it to the cart automatically."),
                     ("human", "{user_input}")
                 ])
-                advisor_chain = advisor_prompt | ChatGroq(temperature=0.3, groq_api_key=os.getenv("GROQ_API_KEY"), model_name="llama-3.1-8b-instant") | StrOutputParser()
+                try:
+                    advisor_api_key = st.secrets["GROQ_API_KEY"]
+                except Exception:
+                    advisor_api_key = os.getenv("GROQ_API_KEY")
+                advisor_chain = advisor_prompt | ChatGroq(temperature=0.3, groq_api_key=advisor_api_key, model_name="llama-3.1-8b-instant") | StrOutputParser()
                 return advisor_chain.invoke({
                     "cart_items": ", ".join(cart) if cart else "Empty", "item_inquiry": item_inquiry, "user_input": user_input
                 })
@@ -427,7 +435,10 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
         # --- VISION LOGIC ---
         if image_base64:
             from langchain_groq import ChatGroq
-            api_key = os.getenv("GROQ_API_KEY")
+            try:
+                api_key = st.secrets["GROQ_API_KEY"]
+            except Exception:
+                api_key = os.getenv("GROQ_API_KEY")
             mime_type = "image/png" if image_base64.startswith("iVBORw0KGgo") else "image/jpeg"
             vision_llm = ChatGroq(temperature=0.1, groq_api_key=api_key, model_name="qwen/qwen3.6-27b")
             vision_msg = HumanMessage(content=[
