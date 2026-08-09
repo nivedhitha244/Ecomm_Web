@@ -27,8 +27,7 @@ if "logged_in" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = None
 if "rag_chain" not in st.session_state:
-    with st.spinner("Initializing AI Assistant (this may take a minute on first run)..."):
-        st.session_state.rag_chain = get_rag_chain()
+    st.session_state.rag_chain = None
 if "current_session_id" not in st.session_state:
     st.session_state.current_session_id = None
 if "feedback_log" not in st.session_state:
@@ -309,6 +308,10 @@ else:
             
         save_message(session_id, "user", prompt)
         
+        if st.session_state.rag_chain is None:
+            with st.spinner("Initializing AI Assistant for the first time..."):
+                st.session_state.rag_chain = get_rag_chain()
+
         with st.spinner("Processing..."):
             response = generate_response(
                 rag_chain=st.session_state.rag_chain,
@@ -317,7 +320,7 @@ else:
                 image_base64=image_base64,
                 cart=st.session_state.cart,
                 username=st.session_state.username
-            )
+    )
 
         with st.chat_message("assistant"):
             st.markdown(response)
