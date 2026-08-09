@@ -10,12 +10,6 @@ from dotenv import load_dotenv
 import streamlit as st
 import hashlib
 
-from langchain_community.document_loaders import DataFrameLoader
-from langchain_community.vectorstores import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 
 # Setup Logging
@@ -187,6 +181,11 @@ def get_session_messages(session_id):
 @st.cache_resource
 def get_rag_chain():
     try:
+        from langchain_community.vectorstores import Chroma
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_groq import ChatGroq
+        from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+        from langchain_core.output_parsers import StrOutputParser
         print("Loading existing RAG database...")
 
         embeddings = HuggingFaceEmbeddings(
@@ -355,6 +354,9 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
             item_inquiry = buy_match.group(1).strip().title()
             st.session_state.last_inquired_item = item_inquiry
             try:
+                from langchain_groq import ChatGroq
+                from langchain_core.prompts import ChatPromptTemplate
+                from langchain_core.output_parsers import StrOutputParser
                 advisor_prompt = ChatPromptTemplate.from_messages([
                     ("system", "You are a smart E-commerce Assistant. The user's current cart contains: {cart_items}. The user just said they want to buy: '{item_inquiry}'. Acknowledge what is currently in their cart, point out any potential brand/compatibility mismatch if they are asking for a different brand (like asking for a Samsung product when they have a Redmi product in the cart), and ask if they would like you to add it anyway. Do not add it to the cart automatically."),
                     ("human", "{user_input}")
@@ -415,6 +417,7 @@ def generate_response(rag_chain, user_input, chat_history=[], image_base64=None,
         
         # --- VISION LOGIC ---
         if image_base64:
+            from langchain_groq import ChatGroq
             api_key = os.getenv("GROQ_API_KEY")
             mime_type = "image/png" if image_base64.startswith("iVBORw0KGgo") else "image/jpeg"
             vision_llm = ChatGroq(temperature=0.1, groq_api_key=api_key, model_name="qwen/qwen3.6-27b")
