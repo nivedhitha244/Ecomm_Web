@@ -181,6 +181,9 @@ def get_session_messages(session_id):
 @st.cache_resource
 def get_rag_chain():
     try:
+        import os
+        os.environ["HF_HOME"] = "/app/hf_cache"
+        os.environ["ANONYMIZED_TELEMETRY"] = "False"
         from langchain_community.vectorstores import Chroma
         from langchain_huggingface import HuggingFaceEmbeddings
         from langchain_groq import ChatGroq

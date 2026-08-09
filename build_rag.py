@@ -1,3 +1,6 @@
+import os
+os.environ["HF_HOME"] = "/app/hf_cache"
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
 import pandas as pd
 from langchain_community.document_loaders import DataFrameLoader
 from langchain_community.vectorstores import Chroma
