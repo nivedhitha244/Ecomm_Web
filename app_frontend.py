@@ -2,20 +2,7 @@ import base64
 import streamlit as st
 import pandas as pd
 from langchain_core.messages import HumanMessage, AIMessage
-from app_backend import (
-    get_rag_chain,
-    generate_response,
-    create_session,
-    get_all_sessions,
-    delete_session,
-    get_session_messages,
-    save_message,
-    get_analytics_data,
-    create_user,
-    authenticate_user,
-    get_recent_fraud_alerts,
-    load_user_cart
-)
+import app_backend as backend
 
 st.set_page_config(page_title="E-Commerce Assistant", page_icon="🛍️", layout="wide")
 
@@ -57,7 +44,7 @@ def start_new_session():
     st.session_state.feedback_log = {}
 
 def remove_session(session_id):
-    delete_session(session_id)
+    backend.delete_session(session_id)
     if st.session_state.current_session_id == session_id:
         st.session_state.current_session_id = None
         st.session_state.feedback_log = {}
@@ -80,10 +67,10 @@ def render_auth_page():
             login_pass = st.text_input("Password", type="password", key="login_pass")
             
             if st.button("Login", use_container_width=True):
-                if authenticate_user(login_user, login_pass):
+                if backend.authenticate_user(login_user, login_pass):
                     st.session_state.logged_in = True
                     st.session_state.username = login_user
-                    st.session_state.cart = load_user_cart(login_user)
+                    st.session_state.cart = backend.load_user_cart(login_user)
                     st.rerun()
                 else:
                     st.error("Invalid username or password.")
@@ -102,7 +89,7 @@ def render_auth_page():
                 elif len(signup_pass) < 6:
                     st.error("Password must be at least 6 characters.")
                 else:
-                    success, message = create_user(signup_user, signup_pass)
+                    success, message = backend.create_user(signup_user, signup_pass)
                     if success:
                         st.success(f"{message} You can now log in.")
                     else:
@@ -143,7 +130,7 @@ with st.sidebar:
     st.divider()
     
     # UPDATED: Passes the active username to the backend to filter history
-    sessions = get_all_sessions(st.session_state.username, search_query)
+    sessions = backend.get_all_sessions(st.session_state.username, search_query)
     
     if not sessions:
         if search_query:
@@ -229,7 +216,7 @@ if st.session_state.show_analytics:
     st.title("📈 Chatbot Usage Analytics")
     st.markdown("Live operational metrics pulled directly from the local SQLite database.")
     
-    stats = get_analytics_data()
+    stats = backend.get_analytics_data()
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Conversations", stats["total_sessions"], delta="Active")
@@ -249,7 +236,7 @@ if st.session_state.show_analytics:
     st.divider()
     
     st.subheader("🚨 Recent Fraud Alerts")
-    fraud_alerts = get_recent_fraud_alerts()
+    fraud_alerts = backend.get_recent_fraud_alerts()
     if fraud_alerts:
         fraud_df = pd.DataFrame(fraud_alerts)
         st.dataframe(fraud_df, use_container_width=True)
@@ -262,7 +249,7 @@ else:
 
     chat_history = []
     if st.session_state.current_session_id:
-        chat_history = get_session_messages(st.session_state.current_session_id)
+        chat_history = backend.get_session_messages(st.session_state.current_session_id)
 
     for i, message in enumerate(chat_history):
         role = "user" if isinstance(message, HumanMessage) else "assistant"
@@ -297,7 +284,7 @@ else:
         if not st.session_state.current_session_id:
             title_text = prompt[:25] + "..." if len(prompt) > 25 else prompt
             # UPDATED: Now passes the logged-in user when creating a new chat
-            st.session_state.current_session_id = create_session(username=st.session_state.username, title=title_text)
+            st.session_state.current_session_id = backend.create_session(username=st.session_state.username, title=title_text)
         
         session_id = st.session_state.current_session_id
         
@@ -306,14 +293,14 @@ else:
             if uploaded_image:
                 st.image(uploaded_image, width=200)
             
-        save_message(session_id, "user", prompt)
+        backend.save_message(session_id, "user", prompt)
         
         if st.session_state.rag_chain is None:
             with st.spinner("Initializing AI Assistant for the first time..."):
-                st.session_state.rag_chain = get_rag_chain()
+                st.session_state.rag_chain = backend.get_rag_chain()
 
         with st.spinner("Processing..."):
-            response = generate_response(
+            response = backend.generate_response(
                 rag_chain=st.session_state.rag_chain,
                 user_input=prompt,
                 chat_history=chat_history,
@@ -325,7 +312,7 @@ else:
         with st.chat_message("assistant"):
             st.markdown(response)
 
-        save_message(session_id, "assistant", response)
+        backend.save_message(session_id, "assistant", response)
         
         if uploaded_image:
             st.session_state.uploader_key += 1
