@@ -3,5 +3,4 @@ venv/
 .env
 __pycache__/
 chatbot_activity.log
-chat_history.db
-chroma_db/
+chat_history.db
