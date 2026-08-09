@@ -10,10 +10,11 @@ COPY app_backend.py .
 COPY app_frontend.py .
 COPY faq_data_2.csv .
 COPY orders.csv .
+COPY build_rag.py .
 COPY .streamlit .streamlit
 
-# Verify that the backend contains get_rag_chain
-RUN python -c "import app_backend; print('SUCCESS: get_rag_chain =', app_backend.get_rag_chain)"
+# Build the RAG database during Docker image creation
+RUN python build_rag.py
 
 EXPOSE 8501
 

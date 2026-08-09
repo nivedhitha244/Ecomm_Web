@@ -187,32 +187,61 @@ def get_session_messages(session_id):
 @st.cache_resource
 def get_rag_chain():
     try:
-        df = pd.read_csv("faq_data_2.csv")
-        df.columns = df.columns.str.lower() 
-        
-        loader = DataFrameLoader(df, page_content_column="question")
-        docs = loader.load()
-        
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        vector_store = Chroma.from_documents(docs, embeddings)
-        
+        print("Loading existing RAG database...")
+
+        embeddings = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L6-v2"
+        )
+
+        vector_store = Chroma(
+            persist_directory="chroma_db",
+            embedding_function=embeddings
+        )
+
         api_key = os.getenv("GROQ_API_KEY")
-        llm = ChatGroq(temperature=0.3, groq_api_key=api_key, model_name="llama-3.1-8b-instant")
-        
+
+        if not api_key:
+            raise ValueError("GROQ_API_KEY is not configured.")
+
+        llm = ChatGroq(
+            temperature=0.3,
+            groq_api_key=api_key,
+            model_name="llama-3.1-8b-instant"
+        )
+
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a helpful e-commerce assistant. Answer based ONLY on the provided context. If you don't know, say 'I cannot find that in our policies.'\n\nContext: {context}"),
+            (
+                "system",
+                """You are a helpful e-commerce assistant.
+
+Answer based ONLY on the provided context.
+
+If you don't know the answer, say:
+'I cannot find that in our policies.'
+
+Context:
+{context}"""
+            ),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}")
         ])
-        
-        retriever = vector_store.as_retriever(search_kwargs={"k": 2})
-        
+
+        retriever = vector_store.as_retriever(
+            search_kwargs={"k": 2}
+        )
+
         def format_docs(docs):
-            return "\n\n".join(f"Question: {doc.page_content}\nAnswer: {doc.metadata['answer']}" for doc in docs)
-            
+            return "\n\n".join(
+                f"Question: {doc.page_content}\n"
+                f"Answer: {doc.metadata.get('answer', '')}"
+                for doc in docs
+            )
+
         rag_chain = (
             {
-                "context": lambda x: format_docs(retriever.invoke(x["input"])),
+                "context": lambda x: format_docs(
+                    retriever.invoke(x["input"])
+                ),
                 "input": lambda x: x["input"],
                 "chat_history": lambda x: x["chat_history"]
             }
@@ -220,12 +249,20 @@ def get_rag_chain():
             | llm
             | StrOutputParser()
         )
-        logging.info("Backend RAG Pipeline initialized successfully.")
-        return rag_chain
-    except Exception as e:
-        logging.error(f"Error initializing pipeline: {e}")
-        raise e
 
+        logging.info(
+            "Backend RAG Pipeline loaded successfully."
+        )
+
+        print("RAG pipeline loaded successfully.")
+
+        return rag_chain
+
+    except Exception as e:
+        logging.error(
+            f"Error loading RAG pipeline: {e}"
+        )
+        raise
 # ==========================================
 # BUSINESS LOGIC (Orders & Returns)
 # ==========================================
